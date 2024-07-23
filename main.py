@@ -1,5 +1,6 @@
-﻿import tkinter as tk
-from tkinter import colorchooser
+﻿import pickle
+import tkinter as tk
+from tkinter import colorchooser, filedialog
 
 
 class App(tk.Tk):
@@ -10,6 +11,29 @@ class App(tk.Tk):
     stroke = 1
 
     canvas_data = []
+
+    def save_ects(self):
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".ects",
+            filetypes=[
+                ("ECTS files", "*.ects"),
+                ("PNG files", "*.png"),
+                ("JPG files", "*.jpg"),
+            ],
+        )
+        if file_path:
+            with open(file_path, "wb") as file:
+                pickle.dump(self.canvas_data, file)
+
+    def saveImg(self):
+        for obj in self.canvas.find_all():
+            obj_type = self.canvas.type(obj)
+            if obj_type == "polygon":
+                color = self.canvas.itemcget(obj, "fill")
+                coords = self.canvas.coords(obj)
+                self.canvas_data.append({"type": "polygon", "color": color, "coords": coords})
+
+        self.save_ects()
 
     # Stroke size
     def stroke_increment(self):
@@ -69,6 +93,33 @@ class App(tk.Tk):
 
         if event.type == "5":
             self.prevPoint = [0, 0]
+
+    # Opening already or earlier made ects files
+    def openEcts(self):
+        file_path = filedialog.askopenfilename(
+            defaultextension=".ects",
+            filetypes=[
+                ("ECTS files", "*.ects"),
+                ("PNG files", "*.png"),
+                ("JPG files", "*.jpg"),
+            ],
+        )
+        if file_path:
+            with open(file_path, "rb") as file:
+                self.canvas_data = pickle.load(file)
+
+            self.redrawCanvas()
+
+    # Redrawing the Canvas Data after opening it
+    def redrawCanvas(self):
+        # Clear the canvas
+        self.canvas.delete("all")
+        # Draw objects from canvas_data
+        for obj in self.canvas_data:
+            if obj["type"] == "polygon":
+                color = obj["color"]
+                coords = obj["coords"]
+                self.canvas.create_polygon(coords, fill=color, outline=color, width=self.stroke)
 
     def new_file(self):
         self.destroy()
@@ -154,6 +205,18 @@ class App(tk.Tk):
             command=self.new_file
         )
 
+        self.file_menu.add_command(
+            label="Save",
+            accelerator="Ctrl+S",
+            command=self.saveImg
+        )
+
+        self.file_menu.add_command(
+            label="Open",
+            accelerator="Ctrl+O",
+            command=self.openEcts
+        )
+
         self.file_menu.add_separator()
         self.file_menu.add_command(
             label="Quit",
@@ -164,6 +227,12 @@ class App(tk.Tk):
         # Keybindings
         self.bind_all("<Control-n>", lambda e: self.new_file())
         self.bind_all("<Control-N>", lambda e: self.new_file())
+
+        self.bind_all("<Control-s>", lambda e: self.saveImg())
+        self.bind_all("<Control-S>", lambda e: self.saveImg())
+
+        self.bind_all("<Control-o>", lambda e: self.openEcts())
+        self.bind_all("<Control-O>", lambda e: self.openEcts())
 
         self.bind_all("<Control-q>", lambda e: self.destroy())
         self.bind_all("<Control-Q>", lambda e: self.destroy())
